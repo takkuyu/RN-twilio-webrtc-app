@@ -14,7 +14,8 @@ import {
   View,
   Button,
   TouchableOpacity,
-  Platform
+  Platform,
+  PermissionsAndroid
 } from "react-native";
 
 import {
@@ -23,114 +24,162 @@ import {
   TwilioVideo
 } from "react-native-twilio-video-webrtc";
 
-  class App extends Component {
-    state = {
-      isAudioEnabled: true,
-      isVideoEnabled: true,
-      status: "disconnected",
-      participants: new Map(),
-      videoTracks: new Map(),
-      roomName: "Room 1",
-      token:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTSzk4YzQzOTM4YjU3Zjk1MjkxZjhjMDMzYjM5MjY0MDBkLTE1ODQzNDA1NTIiLCJpc3MiOiJTSzk4YzQzOTM4YjU3Zjk1MjkxZjhjMDMzYjM5MjY0MDBkIiwic3ViIjoiQUNiY2Y4ZTU0ODM5YzAzMWE1M2IwYzI4NzllNTAyZWVlMyIsImV4cCI6MTU4NDM0NDE1MiwiZ3JhbnRzIjp7ImlkZW50aXR5IjoiTmVlbGFtIFRlc3QgMiIsInZpZGVvIjp7InJvb20iOiJSb29tIDEifX19.TPO8MLutlrlY0UbYAHUBFJNNWuUePrsKptv1JJRXoCg"
-    };
-  
-    _onConnectButtonPress = () => {
-      try {
-        this.twilioRef.connect({
-          roomName: this.state.roomName,
-          accessToken: this.state.token
-        });
-      } catch (error) {
-        console.log(error);
+const requestCameraPermission = async () => {
+  try {
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.CAMERA,
+      {
+        title: "Cool Photo App Camera Permission",
+        message:
+          "Cool Photo App needs access to your camera " +
+          "so you can take awesome pictures.",
+        buttonNeutral: "Ask Me Later",
+        buttonNegative: "Cancel",
+        buttonPositive: "OK"
       }
-  
-      this.setState({ status: "connecting" });
-    };
-  
-    _onEndButtonPress = () => {
-      this.twilioRef.disconnect();
-    };
-  
-    _onMuteButtonPress = () => {
-      this.twilioRef
-        .setLocalAudioEnabled(!this.state.isAudioEnabled)
-        .then(isEnabled => this.setState({ isAudioEnabled: isEnabled }));
-    };
-  
-    _onFlipButtonPress = () => {
-      this.twilioRef.flipCamera();
-    };
-  
-    _onRoomDidConnect = () => {
-      this.setState({ status: "connected" });
-    };
-  
-    _onRoomDidDisconnect = ({ roomName, error }) => {
-      console.log("ERROR: ", error);
-  
-      this.setState({ status: "disconnected" });
-    };
-  
-    _onRoomDidFailToConnect = error => {
-      console.log("ERROR: ", error);
-  
-      this.setState({ status: "disconnected" });
-    };
-  
-    _onParticipantAddedVideoTrack = ({ participant, track }) => {
-      console.log("onParticipantAddedVideoTrack: ", participant, track);
-  
-      this.setState({
-        videoTracks: new Map([
-          ...this.state.videoTracks,
-          [
-            track.trackSid,
-            { participantSid: participant.sid, videoTrackSid: track.trackSid }
-          ]
-        ])
+    );
+    if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+      console.log("You can use the camera");
+    } else {
+      console.log("Camera permission denied");
+    }
+  } catch (err) {
+    console.warn(err);
+  }
+};
+
+const requestRecordAudioPermission = async () => {
+  try {
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+      {
+        title: "Cool Photo App Audio Permission",
+        message:
+          "Cool Photo App needs access to your sudio ",
+        buttonNeutral: "Ask Me Later",
+        buttonNegative: "Cancel",
+        buttonPositive: "OK"
+      }
+    );
+    if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+      console.log("You can use the recorded audio");
+    } else {
+      console.log("Recorded audio permission denied");
+    }
+  } catch (err) {
+    console.warn(err);
+  }
+};
+
+class App extends Component {
+  state = {
+    isAudioEnabled: true,
+    isVideoEnabled: true,
+    status: "disconnected",
+    participants: new Map(),
+    videoTracks: new Map(),
+    roomName: "Room 1",
+    token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2Q5NWI4NjE5MWIwM2EyNDFmYzg3YWIxMWI2YjBmMjU5LTE2MDE1NzAzOTQiLCJpc3MiOiJTS2Q5NWI4NjE5MWIwM2EyNDFmYzg3YWIxMWI2YjBmMjU5Iiwic3ViIjoiQUMxMjU0NDU5YzI1OTFlMGZkYmE0ODJkODcyZjFhZmM0OCIsImV4cCI6MTYwMTU3Mzk5NCwiZ3JhbnRzIjp7ImlkZW50aXR5IjoiVEsiLCJ2aWRlbyI6eyJyb29tIjoiUm9vbSAxIn19fQ.-yKfmGrmVAbY0rOF1lrMNi96c7kpDVikiYow4BV4D6s"
+  };
+  _onConnectButtonPress = () => {
+    try {
+      requestRecordAudioPermission()
+      requestCameraPermission()
+      this.twilioRef.connect({
+        roomName: this.state.roomName,
+        accessToken: this.state.token
       });
-    };
-  
-    _onParticipantRemovedVideoTrack = ({ participant, track }) => {
-      console.log("onParticipantRemovedVideoTrack: ", participant, track);
-  
-      const videoTracks = this.state.videoTracks;
-      videoTracks.delete(track.trackSid);
-  
-      this.setState({ videoTracks: new Map([...videoTracks]) });
-    };
-  
-    setTwilioRef = ref => {
-      this.twilioRef = ref;
-    };
-  
-    render() {
-      return (
-        <View style={styles.container}>
-          {this.state.status === "disconnected" && (
-            <View>
-              <Text style={styles.welcome}>React Native Twilio Webrtc</Text>
-              <TextInput
-                style={styles.input}
-                autoCapitalize="none"
-                value={this.state.roomName}
-                onChangeText={text => this.setState({ roomName: text })}
-              ></TextInput>
-              <TextInput
-                style={styles.input}
-                autoCapitalize="none"
-                value={this.state.token}
-                onChangeText={text => this.setState({ token: text })}
-              ></TextInput>
-              <Button
-                title="Connect"
-                style={styles.button}
-                onPress={this._onConnectButtonPress}
-              ></Button>
-            </View>
-          )}
-  
-          {this.state.status === "connected" ||
+    } catch (error) {
+      console.log(error);
+    }
+
+    this.setState({ status: "connecting" });
+  };
+
+  _onEndButtonPress = () => {
+    this.twilioRef.disconnect();
+  };
+
+  _onMuteButtonPress = () => {
+    this.twilioRef
+      .setLocalAudioEnabled(!this.state.isAudioEnabled)
+      .then(isEnabled => this.setState({ isAudioEnabled: isEnabled }));
+  };
+
+  _onFlipButtonPress = () => {
+    this.twilioRef.flipCamera();
+  };
+
+  _onRoomDidConnect = () => {
+    this.setState({ status: "connected" });
+  };
+
+  _onRoomDidDisconnect = ({ roomName, error }) => {
+    console.log("ERROR: ", error);
+
+    this.setState({ status: "disconnected" });
+  };
+
+  _onRoomDidFailToConnect = error => {
+    console.log("ERROR: ", error);
+
+    this.setState({ status: "disconnected" });
+  };
+
+  _onParticipantAddedVideoTrack = ({ participant, track }) => {
+    console.log("onParticipantAddedVideoTrack: ", participant, track);
+
+    this.setState({
+      videoTracks: new Map([
+        ...this.state.videoTracks,
+        [
+          track.trackSid,
+          { participantSid: participant.sid, videoTrackSid: track.trackSid }
+        ]
+      ])
+    });
+  };
+
+  _onParticipantRemovedVideoTrack = ({ participant, track }) => {
+    console.log("onParticipantRemovedVideoTrack: ", participant, track);
+
+    const videoTracks = this.state.videoTracks;
+    videoTracks.delete(track.trackSid);
+
+    this.setState({ videoTracks: new Map([...videoTracks]) });
+  };
+
+  setTwilioRef = ref => {
+    this.twilioRef = ref;
+  };
+
+  render() {
+    return (
+      <View style={styles.container}>
+        {this.state.status === "disconnected" && (
+          <View>
+            <Text style={styles.welcome}>React Native Twilio Webrtc</Text>
+            <TextInput
+              style={styles.input}
+              autoCapitalize="none"
+              value={this.state.roomName}
+              onChangeText={text => this.setState({ roomName: text })}
+            ></TextInput>
+            <TextInput
+              style={styles.input}
+              autoCapitalize="none"
+              value={this.state.token}
+              onChangeText={text => this.setState({ token: text })}
+            ></TextInput>
+            <Button
+              title="Connect"
+              style={styles.button}
+              onPress={this._onConnectButtonPress}
+            ></Button>
+          </View>
+        )}
+
+        {this.state.status === "connected" ||
           this.state.status === "connecting" ? (
             <View style={styles.callContainer}>
               {this.state.status === "connected" && (
@@ -175,18 +224,18 @@ import {
               </View>
             </View>
           ) : null}
-  
-          <TwilioVideo
-            ref={this.setTwilioRef}
-            onRoomDidConnect={this._onRoomDidConnect}
-            onRoomDidDisconnect={this._onRoomDidDisconnect}
-            onRoomDidFailToConnect={this._onRoomDidFailToConnect}
-            onParticipantAddedVideoTrack={this._onParticipantAddedVideoTrack}
-            onParticipantRemovedVideoTrack={this._onParticipantRemovedVideoTrack}
-          />
-        </View>
-      );
-    }
+
+        <TwilioVideo
+          ref={this.setTwilioRef}
+          onRoomDidConnect={this._onRoomDidConnect}
+          onRoomDidDisconnect={this._onRoomDidDisconnect}
+          onRoomDidFailToConnect={this._onRoomDidFailToConnect}
+          onParticipantAddedVideoTrack={this._onParticipantAddedVideoTrack}
+          onParticipantRemovedVideoTrack={this._onParticipantRemovedVideoTrack}
+        />
+      </View>
+    );
+  }
 };
 
 const styles = StyleSheet.create({
